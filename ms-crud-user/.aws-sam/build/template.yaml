@@ -1,0 +1,87 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: 'ms-epayco
+
+  Sample SAM Template for ms-epayco
+
+  '
+Globals:
+  Function:
+    Timeout: 5
+  Api:
+    Cors:
+      AllowMethods: '''*'''
+      AllowHeaders: '''*'''
+      AllowOrigin: '''*'''
+Resources:
+  GatewayResponse:
+    Type: AWS::ApiGateway::GatewayResponse
+    Properties:
+      ResponseParameters:
+        gatewayresponse.header.Access-Control-Allow-Origin: '''*'''
+        gatewayresponse.header.Access-Control-Allow-Headers: '''*'''
+        gatewayresponse.header.Access-Control-Allow-Methods: '''*'''
+      ResponseType: EXPIRED_TOKEN
+      RestApiId:
+        Ref: ApiGateway
+      StatusCode: '401'
+  ApiGateway:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: v1
+      EndpointConfiguration: REGIONAL
+  LambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Action:
+          - sts:AssumeRole
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+            - edgelambda.amazonaws.com
+  LambdaRolePolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: LambdaRolePolicy
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Action:
+          - logs:CreateLogGroup
+          - logs:CreateLogStream
+          - logs:PutLogEvents
+          - s3:*
+          - dynamodb:*
+          Resource:
+          - '*'
+      Roles:
+      - Ref: LambdaRole
+  MsCleanCodeFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: MsCleanCodeFunction
+      Handler: ms-crud-user
+      Runtime: go1.x
+      Tracing: Active
+      Role:
+        Fn::GetAtt:
+        - LambdaRole
+        - Arn
+      Events:
+        CatchAll:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: ApiGateway
+            Path: /{proxy+}
+            Method: any
+      Environment:
+        Variables:
+          PARAM1: VALUE
+    Metadata:
+      SamResourceId: MsCleanCodeFunction
